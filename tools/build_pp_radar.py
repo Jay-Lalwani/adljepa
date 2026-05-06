@@ -256,6 +256,7 @@ def build_one_run(
         box = rc.opponent_box_at_radar(
             float(radar_time), ego, opponent, run.opponent_time_offset_seconds, T_cog_radar, cfg.box_lwh
         )
+        low_point_box = False
         if box is not None and split != "test":
             center, yaw, velocity = box
             points_in_gt = rc.count_points_in_box(points, center, yaw, cfg.box_lwh)
@@ -263,16 +264,20 @@ def build_one_run(
                 label = label_line(center, yaw, velocity, cfg)
                 stats["label"] += 1
             else:
+                low_point_box = True
                 stats["low_points"] += 1
         elif split == "test":
             stats["test_unlabeled"] += 1
         else:
             stats["no_pose_time"] += 1
         if split != "test" and label is None:
+            if cfg.dataset_mode != "ssl" and not low_point_box:
+                continue
             if not keep_empty_low_point_frame(split, cfg, positive_counts, negative_counts):
                 continue
             negative_counts[split] += 1
-            stats[f"empty_low_point_{split}"] += 1
+            if low_point_box:
+                stats[f"empty_low_point_{split}"] += 1
         elif split != "test" and label is not None:
             positive_counts[split] += 1
 
