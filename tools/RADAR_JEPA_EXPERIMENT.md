@@ -76,6 +76,8 @@ python3 radar_pipeline.py --run-config radar_run_config.yaml --mode run --stages
 
 Supervised data uses `dataset.mode: supervised` and keeps labeled positive frames plus a bounded empty-frame fraction. The current setting is `empty_train_fraction: 0.20` and `empty_val_fraction: 0.20`, meaning empty frames are capped at roughly 20% of the final train/val split, not 20% of all possible empty radar frames.
 
+Here, "empty" means the opponent pose/GT exists but the generated sensor frame has fewer than `min_points_in_gt` points inside the GT box. It is not missing GT. Frames outside the interpolatable ego/opponent pose overlap are tracked separately as `no_pose_time` and are not used as empty training negatives.
+
 SSL data uses `dataset.mode: ssl`, which keeps every valid radar frame with nonzero points, including frames with empty labels. AD-L-JEPA ignores box supervision, so these empty labels are only there to satisfy the standard OpenPCDet dataset contract.
 
 `ALLOW_EMPTY_GT: True` is enabled only in configs that are allowed to consume empty label files. The dataset still rejects samples with zero points or zero voxels during training.

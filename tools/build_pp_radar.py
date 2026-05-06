@@ -59,7 +59,7 @@ def write_frame(root: Path, frame_id: str, points: np.ndarray, label: str | None
         (root / "labels" / f"{frame_id}.txt").write_text("", encoding="utf-8")
 
 
-def keep_unlabeled_frame(
+def keep_empty_low_point_frame(
     split: str,
     cfg: rc.RunConfig,
     positive_counts: dict[str, int],
@@ -207,8 +207,8 @@ def build_one_run(
         "seen": 0,
         "out": 0,
         "label": 0,
-        "unlabeled_train": 0,
-        "unlabeled_val": 0,
+        "empty_low_point_train": 0,
+        "empty_low_point_val": 0,
         "test_unlabeled": 0,
         "guard": 0,
         "outside_time": 0,
@@ -269,10 +269,10 @@ def build_one_run(
         else:
             stats["no_pose_time"] += 1
         if split != "test" and label is None:
-            if not keep_unlabeled_frame(split, cfg, positive_counts, negative_counts):
+            if not keep_empty_low_point_frame(split, cfg, positive_counts, negative_counts):
                 continue
             negative_counts[split] += 1
-            stats[f"unlabeled_{split}"] += 1
+            stats[f"empty_low_point_{split}"] += 1
         elif split != "test" and label is not None:
             positive_counts[split] += 1
 
@@ -288,7 +288,8 @@ def build_one_run(
             rc.log(
                 "  progress "
                 f"out={stats['out']} label={stats['label']} low_points={stats['low_points']} "
-                f"unlabeled_train={stats['unlabeled_train']} unlabeled_val={stats['unlabeled_val']} "
+                f"empty_low_point_train={stats['empty_low_point_train']} "
+                f"empty_low_point_val={stats['empty_low_point_val']} "
                 f"elapsed={time.time() - build_start:.1f}s"
             )
     if int(stats["out"]) == 0:
@@ -337,8 +338,8 @@ def main() -> None:
         "seen": 0,
         "out": 0,
         "label": 0,
-        "unlabeled_train": 0,
-        "unlabeled_val": 0,
+        "empty_low_point_train": 0,
+        "empty_low_point_val": 0,
         "test_unlabeled": 0,
         "guard": 0,
         "outside_time": 0,
@@ -382,8 +383,8 @@ def main() -> None:
     rc.log_section("done")
     rc.log_kv("frames", f"{totals['out']} ({len(train_ids)} train, {len(val_ids)} val, {len(test_ids)} test)")
     rc.log_kv("labels", totals["label"])
-    rc.log_kv("unlabeled_train", totals["unlabeled_train"])
-    rc.log_kv("unlabeled_val", totals["unlabeled_val"])
+    rc.log_kv("empty_low_point_train", totals["empty_low_point_train"])
+    rc.log_kv("empty_low_point_val", totals["empty_low_point_val"])
     rc.log_kv("test_unlabeled", totals["test_unlabeled"])
     rc.log_kv("radar_points_per_frame_min_avg_max", f"{totals['min_points']}/{avg_points:.1f}/{totals['max_points']}")
     rc.log_kv("skipped_low_points", totals["low_points"])
