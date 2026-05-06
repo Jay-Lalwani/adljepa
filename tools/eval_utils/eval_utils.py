@@ -22,6 +22,22 @@ def statistics_info(cfg, ret_dict, metric, disp_dict):
         '(%d, %d) / %d' % (metric['recall_roi_%s' % str(min_thresh)], metric['recall_rcnn_%s' % str(min_thresh)], metric['gt_num'])
 
 
+def save_main_metrics(ret_dict, result_dir):
+    """Persist dataset-agnostic scalar metrics for downstream summaries.
+
+    The upstream AD-L-JEPA fork assumed KITTI evaluation keys like
+    ``Car_3d/moderate``. Custom radar evaluation intentionally reports a
+    smaller radar-specific metric set, so the stable contract here is all
+    numeric scalar entries returned by the evaluator.
+    """
+    main_metric = {}
+    for key, val in ret_dict.items():
+        if isinstance(val, (int, float, np.integer, np.floating)):
+            main_metric[key] = float(val)
+    with open(result_dir / 'main_metric.json', 'w') as f:
+        json.dump(main_metric, f, indent=2, sort_keys=True)
+
+
 def eval_one_epoch(cfg, model, dataloader, epoch_id, logger, dist_test=False, save_to_file=False, result_dir=None):
     result_dir.mkdir(parents=True, exist_ok=True)
 
@@ -127,16 +143,7 @@ def eval_one_epoch(cfg, model, dataloader, epoch_id, logger, dist_test=False, sa
     logger.info('Result is save to %s' % result_dir)
     logger.info('****************Evaluation done.*****************')
 
-    main_metric = {}
-    main_metric['Car_3d/moderate']=ret_dict['Car_3d/moderate']
-    main_metric['Car_3d/moderate_R40'] = ret_dict['Car_3d/moderate_R40']
-    main_metric['Pedestrian_3d/moderate'] = ret_dict['Pedestrian_3d/moderate']
-    main_metric['Pedestrian_3d/moderate_R40'] = ret_dict['Pedestrian_3d/moderate_R40']
-    main_metric['Cyclist_3d/moderate'] = ret_dict['Cyclist_3d/moderate']
-    main_metric['Cyclist_3d/moderate_R40'] = ret_dict['Cyclist_3d/moderate_R40']
-    main_metric['mAP_3d/moderate'] = (ret_dict['Car_3d/moderate'] + ret_dict['Pedestrian_3d/moderate'] + ret_dict['Cyclist_3d/moderate']) / 3
-    main_metric['mAP_3d/moderate_R40'] = (ret_dict['Car_3d/moderate_R40'] + ret_dict['Pedestrian_3d/moderate_R40'] + ret_dict['Cyclist_3d/moderate_R40']) / 3
-    json.dump(main_metric, open(result_dir / 'main_metric.json', 'w'))
+    save_main_metrics(ret_dict, result_dir)
 
     return ret_dict
 

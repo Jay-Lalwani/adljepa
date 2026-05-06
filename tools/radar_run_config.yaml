@@ -1,0 +1,115 @@
+# Front ARS548 radar run config.
+# Common commands:
+#   python3 tools/radar_pipeline.py --run-config tools/radar_run_config.yaml --mode run --dry-run
+#   python3 tools/radar_pipeline.py --run-config tools/radar_run_config.yaml --mode submit-run
+
+run_name: pp_20260428_purdue_front_ars548_5sweep_neg20
+
+paths:
+  repo_dir: /p/cavalier/jay/radar-jepa
+  log_dir: /p/cavalier/jay/logs
+  data_root: /p/cavalier/jay/radar-jepa/data/custom_radar_front_ars548_neg20
+
+container:
+  image: /p/cavalier/jay/OpenPCDet/tools/containers/pointpillars-cu113.sif
+  binds:
+    - /p/cavalier
+
+inputs:
+  ego_odom_topic: /vehicle/uva_odometry
+  radar_topic: /radar_front/ars548_process/detections
+  runs:
+    - name: 04_28_run2_purdue_front_ars548
+      ego_odom:
+        - /p/cavalier/data/raw/PP/2026_04_28/run2/rosbags/no_lidar
+      radar:
+        - /p/cavalier/data/raw/PP/2026_04_28/run2/rosbags/no_lidar
+      opp_odom:
+        - /p/cavalier/data/raw/PP/2026_04_28/run2/purdue_gt_from_raw
+      opp_odom_topic: /vehicle/uva_odometry
+      opponent_time_offset_seconds: -0.405
+
+model:
+  cfg_file: tools/cfgs/custom_radar_models/radar_centerpoint_front_ars548.yaml
+  checkpoint: ""
+  pretrained_model: ""
+  ssl_cfg_file: tools/cfgs/custom_radar_models/radar_ad_l_jepa_front_ars548.yaml
+  ssl_checkpoint: ""
+
+pipeline:
+  # Common stages: all, data, visualize, train, eval.
+  # Radar-specific stages: smoke, ssl, transfer.
+  stages: train
+
+dataset:
+  clean: true
+  mode: supervised
+  max_frames: 0
+  stride: 1
+  chunk_seconds: 20.0
+  guard_seconds: 1.0
+  train_fraction: 0.85
+  test_fraction: 0.05
+  sweep_count: 5
+  sweep_horizon_seconds: 0.5
+  ego_compensated: true
+  min_points_in_gt: 3
+  empty_train_fraction: 0.20
+  empty_val_fraction: 0.20
+  class_name: Car
+  box_lwh: [4.876, 1.930, 1.55]
+
+cache:
+  # Caches decoded raw radar frames, odometry, and radar extrinsic under data_root/cache.
+  # The cache is automatically ignored if source MCAP size/mtime changes.
+  enabled: true
+  dir: /p/cavalier/jay/radar-jepa/data/radar_cache
+
+train:
+  batch_size: 4
+  epochs: 80
+  workers: 6
+
+evaluate:
+  batch_size: 4
+  score_thresh: 0.1
+
+visualize:
+  split: train
+  start_index: 1000
+  count: 100
+  stride: 1
+  dt: 0.1
+  out: /p/cavalier/jay/logs/pp_20260428_purdue_front_ars548_5sweep_neg20/visualize.mcap
+
+radar_filter:
+  # Keep this disabled for the first CenterPoint baseline. Enable for an ablation
+  # that matches the live radar clustering characteristic filter before stacking.
+  enabled: false
+  snr_min_threshold: 12.0
+  snr_max_threshold: 110.0
+  vx_min_threshold: -15.0
+  vx_max_threshold: 15.0
+  vy_min_threshold: -11.0
+  vy_max_threshold: 10.0
+  radial_v_min_threshold: -8.5
+  radial_v_max_threshold: 17.5
+  range_min_threshold: 4.0
+  range_max_threshold: 120.0
+  rcs_min_threshold: -35.0
+  rcs_max_threshold: 23.0
+  elevation_min_threshold: -4.0
+  elevation_max_threshold: 4.0
+  rss_min_threshold: -125.0
+  rss_max_threshold: -10.0
+
+slurm:
+  partition: gpu
+  setup_gres: gpu:1
+  pipeline_gres: gpu:quadro_rtx_6000:1
+  setup_cpus: 4
+  pipeline_cpus: 6
+  setup_mem: 32G
+  pipeline_mem: 64G
+  setup_time: "01:00:00"
+  pipeline_time: "48:00:00"

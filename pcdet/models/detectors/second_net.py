@@ -1,5 +1,4 @@
 from .detector3d_template import Detector3DTemplate
-from tools.visual_utils import evaluate_features_utils
 import torch
 import numpy as np
 from pcdet.ops.iou3d_nms.iou3d_nms_utils import boxes_iou3d_gpu

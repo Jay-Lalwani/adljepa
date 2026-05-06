@@ -1,39 +1,32 @@
-from .detector3d_template import Detector3DTemplate
-from .PartA2_net import PartA2Net
-from .point_rcnn import PointRCNN
-from .pointpillar import PointPillar
-from .pv_rcnn import PVRCNN
-from .second_net import SECONDNet
-from .second_net_iou import SECONDNetIoU
-from .caddn import CaDDN
-from .voxel_rcnn import VoxelRCNN
-from .centerpoint import CenterPoint
-from .pv_rcnn_plusplus import PVRCNNPlusPlus
+from importlib import import_module
 
-from .detector3d_template_voxel_mae import Detector3DTemplate_voxel_mae
-from .voxel_mae_net import Voxel_MAE
-from .ad_l_jepa_net import AD_L_JEPA
 
-__all__ = {
-    'Detector3DTemplate': Detector3DTemplate,
-    'SECONDNet': SECONDNet,
-    'PartA2Net': PartA2Net,
-    'PVRCNN': PVRCNN,
-    'PointPillar': PointPillar,
-    'PointRCNN': PointRCNN,
-    'SECONDNetIoU': SECONDNetIoU,
-    'CaDDN': CaDDN,
-    'VoxelRCNN': VoxelRCNN,
-    'CenterPoint': CenterPoint,
-    'PVRCNNPlusPlus': PVRCNNPlusPlus,
-    'Detector3DTemplate_voxel_mae': Detector3DTemplate_voxel_mae,
-    'Voxel_MAE': Voxel_MAE,
-    'AD_L_JEPA': AD_L_JEPA
+DETECTOR_REGISTRY = {
+    'Detector3DTemplate': ('detector3d_template', 'Detector3DTemplate'),
+    'SECONDNet': ('second_net', 'SECONDNet'),
+    'PartA2Net': ('PartA2_net', 'PartA2Net'),
+    'PVRCNN': ('pv_rcnn', 'PVRCNN'),
+    'PointPillar': ('pointpillar', 'PointPillar'),
+    'PointRCNN': ('point_rcnn', 'PointRCNN'),
+    'SECONDNetIoU': ('second_net_iou', 'SECONDNetIoU'),
+    'CaDDN': ('caddn', 'CaDDN'),
+    'VoxelRCNN': ('voxel_rcnn', 'VoxelRCNN'),
+    'CenterPoint': ('centerpoint', 'CenterPoint'),
+    'PVRCNNPlusPlus': ('pv_rcnn_plusplus', 'PVRCNNPlusPlus'),
+    'Detector3DTemplate_voxel_mae': ('detector3d_template_voxel_mae', 'Detector3DTemplate_voxel_mae'),
+    'Voxel_MAE': ('voxel_mae_net', 'Voxel_MAE'),
+    'AD_L_JEPA': ('ad_l_jepa_net', 'AD_L_JEPA'),
 }
 
 
 def build_detector(model_cfg, num_class, dataset):
-    model = __all__[model_cfg.NAME](
+    if model_cfg.NAME not in DETECTOR_REGISTRY:
+        available = ', '.join(sorted(DETECTOR_REGISTRY))
+        raise KeyError(f'Unknown detector {model_cfg.NAME}. Available detectors: {available}')
+
+    module_name, class_name = DETECTOR_REGISTRY[model_cfg.NAME]
+    detector_cls = getattr(import_module(f'{__name__}.{module_name}'), class_name)
+    model = detector_cls(
         model_cfg=model_cfg, num_class=num_class, dataset=dataset
     )
 

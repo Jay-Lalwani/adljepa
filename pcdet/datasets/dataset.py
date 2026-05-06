@@ -152,7 +152,12 @@ class DatasetTemplate(torch_data.Dataset):
             data_dict=data_dict
         )
 
-        if self.training and len(data_dict['gt_boxes']) == 0:
+        allow_empty_gt = bool(self.dataset_cfg.get('ALLOW_EMPTY_GT', False))
+        if self.training and (
+            (len(data_dict['gt_boxes']) == 0 and not allow_empty_gt)
+            or len(data_dict.get('points', [])) == 0
+            or len(data_dict.get('voxel_coords', [])) == 0
+        ):
             new_index = np.random.randint(self.__len__())
             return self.__getitem__(new_index)
 

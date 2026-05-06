@@ -211,7 +211,15 @@ class AD_L_JEPA(nn.Module):
 
     def get_loss(self, tb_dict=None):
         def reg_fn(z):
+            if z.numel() == 0:
+                return z.new_ones((256,))
             return torch.sqrt(z.var(dim=0) + 1e-4)
+
+        def safe_mean(x):
+            return x.mean() if x.numel() > 0 else x.new_tensor(0.0)
+
+        def safe_var_mean(x):
+            return torch.var(x, dim=0).mean() if x.numel() > 1 else x.new_tensor(0.0)
 
         tb_dict = {} if tb_dict is None else tb_dict
 
@@ -243,16 +251,16 @@ class AD_L_JEPA(nn.Module):
         prediction_target_empty_voxels = prediction[indices==4] # [B, 200, 176, 128], [B, 200, 176] -> target_num x 256
 
         # variance for logs
-        var_context_context_voxels = torch.var(context_context_voxels, dim=0).mean()
-        var_target_target_voxels = torch.var(target_target_voxels, dim=0).mean()
-        var_prediction_target_empty_voxels = torch.var(prediction_target_empty_voxels, dim=0).mean()
-        var_prediction_target_voxels = torch.var(prediction_target_voxels, dim=0).mean()
+        var_context_context_voxels = safe_var_mean(context_context_voxels)
+        var_target_target_voxels = safe_var_mean(target_target_voxels)
+        var_prediction_target_empty_voxels = safe_var_mean(prediction_target_empty_voxels)
+        var_prediction_target_voxels = safe_var_mean(prediction_target_voxels)
         
         # loss for logs
         # cos jepa loss
         loss_cos_jepa_target_voxels = loss_occ_cos_jepa[indices==2]
         loss_cos_jepa_target_empty_voxels = loss_occ_cos_jepa[indices==4]
-        loss_jepa = 0.75*loss_cos_jepa_target_voxels.mean() + 0.25*loss_cos_jepa_target_empty_voxels.mean()
+        loss_jepa = 0.75*safe_mean(loss_cos_jepa_target_voxels) + 0.25*safe_mean(loss_cos_jepa_target_empty_voxels)
         #loss_jepa = loss_occ_cos_jepa[(indices == 2) | (indices == 4)].mean()
 
 
@@ -287,12 +295,14 @@ class AD_L_JEPA(nn.Module):
             'loss_reg_context_context_voxels': loss_reg_context_context_voxels.item(),
             'loss_reg_target_target_voxels': loss_reg_target_target_voxels.item(),
             'loss_reg_prediction_target_voxels': loss_reg_prediction_target_voxels.item(),
-            'loss_cos_jepa_target_voxels': loss_cos_jepa_target_voxels.mean().item(),
-            'loss_cos_jepa_target_empty_voxels': loss_cos_jepa_target_empty_voxels.mean().item(),
+            'loss_cos_jepa_target_voxels': safe_mean(loss_cos_jepa_target_voxels).item(),
+            'loss_cos_jepa_target_empty_voxels': safe_mean(loss_cos_jepa_target_empty_voxels).item(),
             'var_context_context_voxels': var_context_context_voxels.item(),
             'var_target_target_voxels': var_target_target_voxels.item(),
             'var_prediction_target_voxels': var_prediction_target_voxels.item(),
-            'var_prediction_target_empty_voxels':var_prediction_target_empty_voxels.item()
+            'var_prediction_target_empty_voxels':var_prediction_target_empty_voxels.item(),
+            'num_target_voxels': float(target_target_voxels.shape[0]),
+            'num_target_empty_voxels': float(prediction_target_empty_voxels.shape[0])
         }
 
         return loss, tb_dict
@@ -306,13 +316,16 @@ class AD_L_JEPA(nn.Module):
         ### down sample voxel features to bev feature size
         coor_down_sample = coors.detach().int().clone() # [points_num, 4], (batch_idx, z_idx, y_idx, x_idx)
         coor_down_sample[:, 1:] = torch.div(coor_down_sample[:, 1:], self.down_factor * self.grid, rounding_mode='floor')
-        coor_down_sample[:, 1] = torch.div(coor_down_sample[:, 1], coor_down_sample[:, 1].max() * 2, rounding_mode='floor') 
+        z_denom = torch.clamp(coor_down_sample[:, 1].max() * 2, min=1)
+        coor_down_sample[:, 1] = torch.div(coor_down_sample[:, 1], z_denom, rounding_mode='floor') 
         unique_coor_down_sample, inverse_index = torch.unique(coor_down_sample, return_inverse=True, dim=0) # unique_coor_down_sample: [unique_points_num, 4], (batch_idx, z_idx, y_idx, x_idx); inverse_index: [points_num]
         
         ### mask on bev feature
         select_ratio = 1 - self.masked_ratio # ratio for select voxel
         nums = unique_coor_down_sample.shape[0]
         len_keep = int(nums * select_ratio)
+        if nums > 1:
+            len_keep = min(nums - 1, max(1, len_keep))
         noise = torch.rand(nums, device=voxel_features.device)  # noise in [0, 1]
         ids_shuffle = torch.argsort(noise)
         ids_restore = torch.argsort(ids_shuffle)

@@ -16,7 +16,10 @@ from pcdet.models import build_network, model_fn_decorator
 from pcdet.utils import common_utils
 from train_utils.optimization import build_optimizer, build_scheduler
 from train_utils.train_utils import train_model_ssl, train_model
-import wandb
+try:
+    import wandb
+except Exception:
+    wandb = None
 
 def parse_config():
     parser = argparse.ArgumentParser(description='arg parser')
@@ -99,8 +102,8 @@ def main():
         os.system('cp %s %s' % (args.cfg_file, output_dir))
 
     tb_log = SummaryWriter(log_dir=str(output_dir / 'tensorboard')) if cfg.LOCAL_RANK == 0 else None
-    # Initialize wandb
-    if cfg.LOCAL_RANK == 0:
+    use_wandb = os.environ.get('RADAR_JEPA_ENABLE_WANDB', '0') == '1' and wandb is not None
+    if cfg.LOCAL_RANK == 0 and use_wandb:
         wandb.init(project='AD-L-JEPA-personal', entity='haoranzhu')
 
     # -----------------------create dataloader & network & optimizer---------------------------
@@ -211,7 +214,8 @@ def main():
     logger.info('**********************End training %s/%s(%s)**********************\n\n\n'
                 % (cfg.EXP_GROUP_PATH, cfg.TAG, args.extra_tag))
 
-    wandb.finish()
+    if cfg.LOCAL_RANK == 0 and use_wandb:
+        wandb.finish()
 
 if __name__ == '__main__':
     main()

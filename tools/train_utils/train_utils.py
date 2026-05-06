@@ -6,9 +6,17 @@ import tqdm
 import time
 from torch.nn.utils import clip_grad_norm_
 from pcdet.utils import common_utils, commu_utils
-import wandb
 from eval_utils import eval_utils
 from pcdet.config import cfg
+try:
+    import wandb
+except Exception:
+    wandb = None
+
+
+def log_wandb(values, step):
+    if wandb is not None and os.environ.get('RADAR_JEPA_ENABLE_WANDB', '0') == '1':
+        wandb.log(values, step=step)
 
 def train_one_epoch(model, optimizer, train_loader, model_func, lr_scheduler, accumulated_iter, optim_cfg,
                     rank, tbar, total_it_each_epoch, dataloader_iter, tb_log=None, leave_pbar=False):
@@ -42,7 +50,7 @@ def train_one_epoch(model, optimizer, train_loader, model_func, lr_scheduler, ac
 
         if tb_log is not None:
             tb_log.add_scalar('meta_data/learning_rate', cur_lr, accumulated_iter)
-            wandb.log({'learning_rate': cur_lr}, step=accumulated_iter)
+            log_wandb({'learning_rate': cur_lr}, step=accumulated_iter)
 
         model.train()
         optimizer.zero_grad()
@@ -81,11 +89,11 @@ def train_one_epoch(model, optimizer, train_loader, model_func, lr_scheduler, ac
 
             if tb_log is not None:
                 tb_log.add_scalar('meta_data/learning_rate', cur_lr, accumulated_iter)
-                wandb.log({'learning_rate': cur_lr}, step=accumulated_iter)
-                wandb.log({'grad_norm': total_grad_norm}, step=accumulated_iter)
+                log_wandb({'learning_rate': cur_lr}, step=accumulated_iter)
+                log_wandb({'grad_norm': total_grad_norm}, step=accumulated_iter)
                 for key, val in tb_dict.items():
                     tb_log.add_scalar('train/' + key, val, accumulated_iter)
-                    wandb.log({key: val}, step=accumulated_iter)
+                    log_wandb({key: val}, step=accumulated_iter)
     if rank == 0:
         pbar.close()
     return accumulated_iter
@@ -122,7 +130,7 @@ def train_one_epoch_ssl(model, optimizer, train_loader, model_func, lr_scheduler
 
         if tb_log is not None:
             tb_log.add_scalar('meta_data/learning_rate', cur_lr, accumulated_iter)
-            wandb.log({'learning_rate': cur_lr}, step=accumulated_iter)
+            log_wandb({'learning_rate': cur_lr}, step=accumulated_iter)
 
         model.train()
         optimizer.zero_grad()
@@ -171,12 +179,12 @@ def train_one_epoch_ssl(model, optimizer, train_loader, model_func, lr_scheduler
 
             if tb_log is not None:
                 tb_log.add_scalar('meta_data/learning_rate', cur_lr, accumulated_iter)
-                wandb.log({'learning_rate': cur_lr}, step=accumulated_iter)
-                wandb.log({'grad_norm': total_grad_norm}, step=accumulated_iter)
-                wandb.log({'ema': m}, step=accumulated_iter)
+                log_wandb({'learning_rate': cur_lr}, step=accumulated_iter)
+                log_wandb({'grad_norm': total_grad_norm}, step=accumulated_iter)
+                log_wandb({'ema': m}, step=accumulated_iter)
                 for key, val in tb_dict.items():
                     tb_log.add_scalar('train/' + key, val, accumulated_iter)
-                    wandb.log({key: val}, step=accumulated_iter)
+                    log_wandb({key: val}, step=accumulated_iter)
     if rank == 0:
         pbar.close()
     return accumulated_iter
@@ -322,16 +330,16 @@ def train_model_with_eval(model, optimizer, train_loader, test_loader, model_fun
                         result_dir=eval_output_dir, save_to_file=False
                     )
                     if rank==0:
-                        wandb.log({'val/Car_3d/moderate': val_tb_dict['Car_3d/moderate']}, step=accumulated_iter)
-                        wandb.log({'val/Car_3d/moderate_R40': val_tb_dict['Car_3d/moderate_R40']}, step=accumulated_iter)
-                        wandb.log({'val/Pedestrian_3d/moderate': val_tb_dict['Pedestrian_3d/moderate']}, step=accumulated_iter)
-                        wandb.log({'val/Pedestrian_3d/moderate_R40': val_tb_dict['Pedestrian_3d/moderate_R40']}, step=accumulated_iter)
-                        wandb.log({'val/Cyclist_3d/moderate': val_tb_dict['Cyclist_3d/moderate']}, step=accumulated_iter)
-                        wandb.log({'val/Cyclist_3d/moderate_R40': val_tb_dict['Cyclist_3d/moderate_R40']}, step=accumulated_iter)
+                        log_wandb({'val/Car_3d/moderate': val_tb_dict['Car_3d/moderate']}, step=accumulated_iter)
+                        log_wandb({'val/Car_3d/moderate_R40': val_tb_dict['Car_3d/moderate_R40']}, step=accumulated_iter)
+                        log_wandb({'val/Pedestrian_3d/moderate': val_tb_dict['Pedestrian_3d/moderate']}, step=accumulated_iter)
+                        log_wandb({'val/Pedestrian_3d/moderate_R40': val_tb_dict['Pedestrian_3d/moderate_R40']}, step=accumulated_iter)
+                        log_wandb({'val/Cyclist_3d/moderate': val_tb_dict['Cyclist_3d/moderate']}, step=accumulated_iter)
+                        log_wandb({'val/Cyclist_3d/moderate_R40': val_tb_dict['Cyclist_3d/moderate_R40']}, step=accumulated_iter)
                         val_tb_dict['mAP_3d/moderate'] = (val_tb_dict['Car_3d/moderate'] + val_tb_dict['Pedestrian_3d/moderate'] + val_tb_dict['Cyclist_3d/moderate']) / 3
                         val_tb_dict['mAP_3d/moderate_R40'] = (val_tb_dict['Car_3d/moderate_R40'] + val_tb_dict['Pedestrian_3d/moderate_R40'] + val_tb_dict['Cyclist_3d/moderate_R40']) / 3
-                        wandb.log({'val/mAP_3d/moderate': val_tb_dict['mAP_3d/moderate']}, step=accumulated_iter)
-                        wandb.log({'val/mAP_3d/moderate_R40': val_tb_dict['mAP_3d/moderate_R40']}, step=accumulated_iter)
+                        log_wandb({'val/mAP_3d/moderate': val_tb_dict['mAP_3d/moderate']}, step=accumulated_iter)
+                        log_wandb({'val/mAP_3d/moderate_R40': val_tb_dict['mAP_3d/moderate_R40']}, step=accumulated_iter)
                 model.train()
 
             # save trained model

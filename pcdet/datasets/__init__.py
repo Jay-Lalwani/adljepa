@@ -11,6 +11,7 @@ from .nuscenes.nuscenes_dataset import NuScenesDataset
 from .waymo.waymo_dataset import WaymoDataset
 from .pandaset.pandaset_dataset import PandasetDataset
 from .lyft.lyft_dataset import LyftDataset
+from .custom_radar.custom_radar_dataset import CustomRadarDataset
 
 __all__ = {
     'DatasetTemplate': DatasetTemplate,
@@ -18,7 +19,8 @@ __all__ = {
     'NuScenesDataset': NuScenesDataset,
     'WaymoDataset': WaymoDataset,
     'PandasetDataset': PandasetDataset,
-    'LyftDataset': LyftDataset
+    'LyftDataset': LyftDataset,
+    'CustomRadarDataset': CustomRadarDataset
 }
 
 

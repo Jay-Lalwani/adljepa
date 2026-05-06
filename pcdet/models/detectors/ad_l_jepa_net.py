@@ -1,9 +1,11 @@
 from .detector3d_template_ad_l_jepa import Detector3DTemplate_AD_L_JEPA
-from sklearn.cluster import KMeans
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from tools.visual_utils import evaluate_features_utils
+
+
+def _load_feature_viz_utils():
+    from tools.visual_utils import evaluate_features_utils
+    return evaluate_features_utils
 
 class AD_L_JEPA(Detector3DTemplate_AD_L_JEPA):
     def __init__(self, model_cfg, num_class, dataset):
@@ -27,6 +29,7 @@ class AD_L_JEPA(Detector3DTemplate_AD_L_JEPA):
             loss, tb_dict, disp_dict = self.get_training_loss()
 
             if plot:
+                evaluate_features_utils = _load_feature_viz_utils()
                 print("debug frame_id", input_batch['frame_id'])
                 print("debug loss", loss)
                 print("debug tb_dict", tb_dict)
@@ -163,6 +166,7 @@ class AD_L_JEPA(Detector3DTemplate_AD_L_JEPA):
 
                 #occ_k_means.bev_svd_analysis(bev_feature, final_output_dir+"/bev_{}_svd.png".format(str(batch_dict['frame_id'])))
             else:
+                evaluate_features_utils = _load_feature_viz_utils()
                 gt_boxes = input_batch['gt_boxes'] # [B, M, 8]
                 num_classes = len(torch.unique(gt_boxes[:,:,7]))
 
