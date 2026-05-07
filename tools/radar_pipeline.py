@@ -236,12 +236,10 @@ def pipeline(cfg: rc.RunConfig, args: argparse.Namespace) -> None:
             str(cfg.workers),
             "--extra_tag",
             cfg.run_name,
-            "--set",
-            "DATA_CONFIG.DATA_PATH",
-            str(cfg.data_root),
         ]
         if configured_pretrained:
             train_cmd.extend(["--pretrained_model", str(configured_pretrained)])
+        train_cmd.extend(["--set", "DATA_CONFIG.DATA_PATH", str(cfg.data_root)])
         runner.run(train_cmd, cfg.repo_dir / "tools")
 
     if stages == "eval":
