@@ -86,6 +86,8 @@ class RunConfig:
     batch_size: int
     epochs: int
     workers: int
+    ssl_batch_size: int
+    ssl_epochs: int
     eval_batch_size: int
     eval_score_thresh: float
     slurm_partition: str
@@ -178,6 +180,9 @@ def load_run_config(path: Path | str) -> RunConfig:
         raise ValueError("cache must be a YAML mapping when provided")
     model = _section(data, "model")
     train = _section(data, "train")
+    ssl = data.get("ssl", {})
+    if not isinstance(ssl, dict):
+        raise ValueError("ssl must be a YAML mapping when provided")
     evaluate = _section(data, "evaluate")
     slurm = _section(data, "slurm")
 
@@ -227,6 +232,8 @@ def load_run_config(path: Path | str) -> RunConfig:
         batch_size=int(_require(train, "batch_size", "train.batch_size")),
         epochs=int(_require(train, "epochs", "train.epochs")),
         workers=int(_require(train, "workers", "train.workers")),
+        ssl_batch_size=int(ssl.get("batch_size", _require(train, "batch_size", "train.batch_size"))),
+        ssl_epochs=int(ssl.get("epochs", 30)),
         eval_batch_size=int(_require(evaluate, "batch_size", "evaluate.batch_size")),
         eval_score_thresh=float(_require(evaluate, "score_thresh", "evaluate.score_thresh")),
         slurm_partition=str(_require(slurm, "partition", "slurm.partition")),

@@ -3,7 +3,7 @@
 # AD-L-JEPA pretraining. It is intentionally separate from the supervised
 # CenterPoint baseline run_name so both jobs can run in parallel.
 
-run_name: pp_20260428_purdue_front_ars548_5sweep_jepa_pretrain_ssl_all
+run_name: pp_20260428_purdue_front_ars548_5sweep_jepa_pretrain_ssl_all_beta10
 
 paths:
   repo_dir: /p/cavalier/jay/radar-jepa
@@ -67,6 +67,7 @@ train:
   workers: 6
 
 ssl:
+  batch_size: 8
   epochs: 30
 
 evaluate:
