@@ -2,6 +2,12 @@
 
 Official source code repo for AD-L-JEPA: Self-Supervised Representation Learning with Joint Embedding Predictive Architecture for Automotive LiDAR Object Detection (https://arxiv.org/abs/2501.04969), the first joint-embedding predictive architecture (JEPA) based method for self-supervised representation learning of autonomous driving scenarios with LiDAR data.
 
+## Radar Extension
+
+This fork adds a radar-only detection experiment on front ARS548 multi-sweep radar data. It builds OpenPCDet-compatible radar datasets from MCAP logs, trains a radar-only CenterPoint baseline, pretrains an AD-L-JEPA radar encoder on unlabeled radar frames, transfers the JEPA context encoder into CenterPoint, and compares the fine-tuned detector against the supervised baseline.
+
+The main radar report, final metrics, and usage notes are in [tools/RADAR_JEPA_REPORT.md](tools/RADAR_JEPA_REPORT.md). The operational runbook is in [tools/RADAR_JEPA_EXPERIMENT.md](tools/RADAR_JEPA_EXPERIMENT.md).
+
 
 
 ![Page 1](AD_L_JEPA_architecture.png)
@@ -100,4 +106,3 @@ bash ./scripts/dist_train.sh ${NUM_GPUS}  --cfg_file cfgs/kitti_models/second.ya
 ## Acknowledgement
 
 This repository is based on [OpenPCDet](https://github.com/open-mmlab/OpenPCDet), [Occupancy-MAE](https://github.com/chaytonmin/Occupancy-MAE), [BEV-MAE](https://github.com/VDIGPKU/BEV-MAE), [DINO](https://github.com/facebookresearch/dino)
-

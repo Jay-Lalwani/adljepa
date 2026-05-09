@@ -38,10 +38,12 @@ For detection, only `backbone_3d.encoder.*` is transferred into the CenterPoint 
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Historical positive-only baseline | `custom_radar_front_ars548` | `.../pp_20260428_purdue_front_ars548_5sweep/ckpt/checkpoint_epoch_80.pth` | `0.7747` | `0.4725` | `0.8550` | `0.6086` | `0.9545` | `0.3217 m` | `0.8052 m/s` |
 | Current supervised baseline | `custom_radar_front_ars548_neg20` | `.../pp_20260428_purdue_front_ars548_5sweep_neg20/ckpt/checkpoint_epoch_80.pth` | `0.7854` | `0.7266` | `0.8516` | `0.7842` | `0.2564` | `0.3380 m` | `0.7176 m/s` |
-| AD-L-JEPA SSL pretrain | `custom_radar_front_ars548_ssl_all` | `.../pp_20260428_purdue_front_ars548_5sweep_jepa_pretrain_ssl_all/ckpt/checkpoint_epoch_30.pth` | N/A | N/A | N/A | N/A | N/A | N/A | N/A |
+| AD-L-JEPA SSL pretrain, beta1 | `custom_radar_front_ars548_ssl_all` | `.../pp_20260428_purdue_front_ars548_5sweep_jepa_pretrain_ssl_all/ckpt/checkpoint_epoch_30.pth` | N/A | N/A | N/A | N/A | N/A | N/A | N/A |
 | JEPA fine-tune, beta1 pretrain | `custom_radar_front_ars548_neg20` | `.../pp_20260428_purdue_front_ars548_5sweep_neg20_jepa_ft/ckpt/checkpoint_epoch_80.pth` | `0.7751` | `0.7094` | `0.8398` | `0.7691` | `0.2753` | `0.3296 m` | `0.7236 m/s` |
+| AD-L-JEPA SSL pretrain, beta10 | `custom_radar_front_ars548_ssl_all` | `.../pp_20260428_purdue_front_ars548_5sweep_jepa_pretrain_ssl_all_beta10/ckpt/checkpoint_epoch_30.pth` | N/A | N/A | N/A | N/A | N/A | N/A | N/A |
+| JEPA fine-tune, beta10 pretrain | `custom_radar_front_ars548_neg20` | `.../pp_20260428_purdue_front_ars548_5sweep_neg20_jepa_beta10_ft/ckpt/checkpoint_epoch_80.pth` | `0.7682` | `0.7660` | `0.8499` | `0.8058` | `0.2078` | `0.3218 m` | `0.7406 m/s` |
 
-The current supervised baseline is the reference model. Adding low-point empty labels kept recall essentially flat while reducing false positives by roughly 73% versus the positive-only run. The first JEPA fine-tune did not beat this baseline, so it should be treated as negative transfer under the initial beta1 pretraining setup rather than as the final JEPA conclusion.
+The current supervised baseline is the reference model. Adding low-point empty labels kept recall essentially flat while reducing false positives by roughly 73% versus the positive-only run. The beta10 JEPA run produced the best precision, F1, false-positive rate, and center error, while BEV AP and velocity error remained better in the supervised baseline.
 
 Detailed current baseline metrics:
 
@@ -71,28 +73,7 @@ Detailed current baseline metrics:
 
 ## Next Steps
 
-1. Run the improved JEPA pretrain.
-
-   The initial radar pretrain used `BETA: 1.0`, matching the KITTI config. The repo uses `BETA: 10.0` for Waymo-scale CenterPoint pretraining, and our pretrain diagnostics showed active variance regularization through the final epoch. The next run therefore keeps the same data and mask ratio but uses stronger variance regularization:
-
-   ```yaml
-   MODEL:
-     BACKBONE_3D:
-       MASKED_RATIO: 0.5
-       ALPHA: 1.0
-       BETA: 10.0
-   ssl:
-     batch_size: 8
-     epochs: 30
-   ```
-
-   Submitted job:
-
-   ```text
-   6185789 radar_pp_20260428_purdue_front_ars548_5sweep_jepa_pretrain_ssl_all_beta10
-   ```
-
-2. Transfer the improved JEPA encoder.
+1. Transfer the improved JEPA encoder.
 
    ```bash
    cd /p/cavalier/jay/radar-jepa/tools
@@ -105,7 +86,7 @@ Detailed current baseline metrics:
    /p/cavalier/jay/radar-jepa/output/custom_radar/pp_20260428_purdue_front_ars548_5sweep_jepa_pretrain_ssl_all_beta10_jepa_encoder_for_centerpoint.pth
    ```
 
-3. Fine-tune CenterPoint from the transferred JEPA encoder on the supervised neg20 dataset.
+2. Fine-tune CenterPoint from the transferred JEPA encoder on the supervised neg20 dataset.
 
    In `tools/radar_run_config.yaml`, set:
 
@@ -126,7 +107,7 @@ Detailed current baseline metrics:
    python3 radar_pipeline.py --run-config radar_run_config.yaml --mode submit-run
    ```
 
-4. Evaluate the JEPA fine-tuned detector on the same neg20 validation split.
+3. Evaluate the JEPA fine-tuned detector on the same neg20 validation split.
 
    After training, set:
 
@@ -144,17 +125,17 @@ Detailed current baseline metrics:
    python3 radar_pipeline.py --run-config radar_run_config.yaml --mode submit-run
    ```
 
-5. Visualize JEPA predictions with the same checkpoint.
+4. Visualize JEPA predictions with the same checkpoint.
 
    Set `pipeline.stages: visualize`, keep `model.checkpoint` pointed at the JEPA fine-tuned checkpoint, and submit the pipeline. The MCAP overlays `/radar/points`, `/radar/gt_opp`, and model predictions.
 
-6. Fill the final comparison table.
+5. Fill the final comparison table.
 
    Compare only runs evaluated on `custom_radar_front_ars548_neg20`:
 
    - Random-init CenterPoint epoch 80: current baseline.
    - JEPA beta1 full fine-tune epoch 80: completed negative-transfer result.
-   - JEPA beta10 full fine-tune epoch 80: next main result.
+   - JEPA beta10 full fine-tune epoch 80: best current JEPA result.
    - Optional label-efficiency runs if full-label JEPA remains neutral or negative.
 
 ## Pretraining Diagnostics
