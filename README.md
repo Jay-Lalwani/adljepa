@@ -2,15 +2,15 @@
 
 This fork adapts AD-L-JEPA, originally built for LiDAR self-supervised pretraining, to radar-only object detection. It builds OpenPCDet-style datasets from ARS548 radar MCAP logs, trains a supervised radar CenterPoint baseline, pretrains a radar JEPA encoder on unlabeled radar frames, transfers that encoder into CenterPoint, and evaluates both detectors on the same validation split.
 
-The short technical summary and final results are in [tools/RADAR_JEPA_REPORT.md](tools/RADAR_JEPA_REPORT.md).
+The short technical summary and prelimenary results are in [tools/RADAR_JEPA_REPORT.md](tools/RADAR_JEPA_REPORT.md).
 
-## What This Repo Adds
+## Additions to forked repo:
 
-- A Putnam Park radar dataset builder for front ARS548 MCAP data.
+- A radar dataset builder for front ARS548 MCAP data.
 - Five-sweep radar stacking with ego-motion compensation.
 - Radar labels with 3D boxes, heading, and Cartesian velocity.
 - Controlled empty-label frames for cases where GT exists but radar has too few points on the object.
-- Smoke tests and Foxglove MCAP visualization for points, GT boxes, and predictions.
+- Foxglove MCAP visualization for points, GT boxes, and predictions.
 - Custom radar evaluation metrics: BEV AP, precision/recall/F1, center error, velocity error, yaw error, and false positives per frame.
 - JEPA encoder transfer from radar SSL pretraining into a standard CenterPoint detector.
 
