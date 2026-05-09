@@ -1,108 +1,102 @@
-# [AAAI 2026] AD-L-JEPA: Self-Supervised Representation Learning with Joint Embedding Predictive Architecture for Automotive LiDAR Object Detection
+# Radar JEPA
 
-Official source code repo for AD-L-JEPA: Self-Supervised Representation Learning with Joint Embedding Predictive Architecture for Automotive LiDAR Object Detection (https://arxiv.org/abs/2501.04969), the first joint-embedding predictive architecture (JEPA) based method for self-supervised representation learning of autonomous driving scenarios with LiDAR data.
+This fork adapts AD-L-JEPA, originally built for LiDAR self-supervised pretraining, to radar-only object detection. It builds OpenPCDet-style datasets from ARS548 radar MCAP logs, trains a supervised radar CenterPoint baseline, pretrains a radar JEPA encoder on unlabeled radar frames, transfers that encoder into CenterPoint, and evaluates both detectors on the same validation split.
 
-## Radar Extension
+The short technical summary and final results are in [tools/RADAR_JEPA_REPORT.md](tools/RADAR_JEPA_REPORT.md).
 
-This fork adds a radar-only detection experiment on front ARS548 multi-sweep radar data. It builds OpenPCDet-compatible radar datasets from MCAP logs, trains a radar-only CenterPoint baseline, pretrains an AD-L-JEPA radar encoder on unlabeled radar frames, transfers the JEPA context encoder into CenterPoint, and compares the fine-tuned detector against the supervised baseline.
+## What This Repo Adds
 
-The main radar report, final metrics, and usage notes are in [tools/RADAR_JEPA_REPORT.md](tools/RADAR_JEPA_REPORT.md). The operational runbook is in [tools/RADAR_JEPA_EXPERIMENT.md](tools/RADAR_JEPA_EXPERIMENT.md).
+- A Putnam Park radar dataset builder for front ARS548 MCAP data.
+- Five-sweep radar stacking with ego-motion compensation.
+- Radar labels with 3D boxes, heading, and Cartesian velocity.
+- Controlled empty-label frames for cases where GT exists but radar has too few points on the object.
+- Smoke tests and Foxglove MCAP visualization for points, GT boxes, and predictions.
+- Custom radar evaluation metrics: BEV AP, precision/recall/F1, center error, velocity error, yaw error, and false positives per frame.
+- JEPA encoder transfer from radar SSL pretraining into a standard CenterPoint detector.
 
+## Main Configs
 
+- Supervised training/eval/visualization: `tools/radar_run_config.yaml`
+- JEPA pretraining/transfer: `tools/radar_run_config_jepa_pretrain.yaml`
+- CenterPoint model: `tools/cfgs/custom_radar_models/radar_centerpoint_front_ars548.yaml`
+- AD-L-JEPA model: `tools/cfgs/custom_radar_models/radar_ad_l_jepa_front_ars548.yaml`
 
-![Page 1](AD_L_JEPA_architecture.png)
+The configs are written for the UVA HPC environment and use Apptainer plus Slurm. Update the paths in the YAML files if running elsewhere.
 
-Timelines:
-- [x] Initial commit
-- [x] Source code release by the end of January 2025
-- [x] Make code more organized and release pretrained models by Nov 17th, 2025. 
+## Standard Workflow
 
+Run commands from `tools/`.
 
-If this paper is helpful for you, you may consider cite it via:
+```bash
+cd /p/cavalier/jay/radar-jepa/tools
+```
+
+Build the supervised radar dataset:
+
+```bash
+python3 radar_pipeline.py --run-config radar_run_config.yaml --mode submit-run --stages data
+```
+
+Check the dataset:
+
+```bash
+python3 radar_pipeline.py --run-config radar_run_config.yaml --mode submit-run --stages smoke
+```
+
+Visualize points, labels, and predictions:
+
+```bash
+python3 radar_pipeline.py --run-config radar_run_config.yaml --mode submit-run --stages visualize
+```
+
+Train the supervised CenterPoint baseline:
+
+```bash
+python3 radar_pipeline.py --run-config radar_run_config.yaml --mode submit-run --stages train
+```
+
+Pretrain AD-L-JEPA on unlabeled radar:
+
+```bash
+python3 radar_pipeline.py --run-config radar_run_config_jepa_pretrain.yaml --mode submit-run --stages ssl
+```
+
+Transfer the JEPA encoder into CenterPoint format:
+
+```bash
+python3 radar_pipeline.py --run-config radar_run_config_jepa_pretrain.yaml --mode submit-run --stages transfer
+```
+
+Fine-tune CenterPoint from JEPA weights by setting `model.pretrained_model` in `radar_run_config.yaml`, then run:
+
+```bash
+python3 radar_pipeline.py --run-config radar_run_config.yaml --mode submit-run --stages train
+```
+
+Evaluate a checkpoint by setting `model.checkpoint` in `radar_run_config.yaml`, then run:
+
+```bash
+python3 radar_pipeline.py --run-config radar_run_config.yaml --mode submit-run --stages eval
+```
+
+Use `--dry-run` before submitting if you want to inspect the generated Slurm command:
+
+```bash
+python3 radar_pipeline.py --run-config radar_run_config.yaml --mode submit-run --stages train --dry-run
+```
+
+## Original Project
+
+This work is based on AD-L-JEPA: *Self-Supervised Representation Learning with Joint Embedding Predictive Architecture for Automotive LiDAR Object Detection*.
+
 ```bibtex
 @misc{zhu2025adljepa,
-      title={Self-Supervised Representation Learning with Joint Embedding Predictive Architecture for Automotive LiDAR Object Detection}, 
-      author={Haoran Zhu and Zhenyuan Dong and Kristi Topollai and Beiyao Sha and Anna Choromanska},
-      year={2025},
-      eprint={2501.04969},
-      archivePrefix={arXiv},
-      primaryClass={cs.RO},
-      url={https://arxiv.org/abs/2501.04969}, 
+  title={Self-Supervised Representation Learning with Joint Embedding Predictive Architecture for Automotive LiDAR Object Detection},
+  author={Haoran Zhu and Zhenyuan Dong and Kristi Topollai and Beiyao Sha and Anna Choromanska},
+  year={2025},
+  eprint={2501.04969},
+  archivePrefix={arXiv},
+  primaryClass={cs.RO},
+  url={https://arxiv.org/abs/2501.04969}
 }
 ```
-
-
-## Pre-trained Models, Tensorboard Logs
-Self-supervised pre-trained models with AD-L-JEPA:
-| Architecture |       Dataset      |                           Weights & Tensorboard Logs                           |
-| :---------------:| :---------------: | :----------------------------------------------------------: |
-| VoxelBackBone8x  | KITTI3D  | [google_drive](https://drive.google.com/drive/folders/1RbOyBm15gRLBsgFSIrPxSshC1daOob3n?usp=sharing) |
-| VoxelBackBone8x  | ONCE (small, 100k)  | [google_drive](https://drive.google.com/drive/folders/1vbBFu_UeStth7EIXzXsy9XTMwhzmUcgz?usp=sharing) |
-| VoxelBackBone8x  | ONCE (medium, 500k)  | [google_drive](https://drive.google.com/drive/folders/1hBz459khN--ng0w_LmRcoocu3H3bgrUk?usp=sharing) |
-| VoxelBackBone8x  | ONCE (large, 1M)  | [google_drive](https://drive.google.com/drive/folders/1n3dtbwK9jsB49XuxxOXZyk9H9z0Xb_E4?usp=sharing) |
-
-Supervised fine-tuned models after loading AD-L-JEPA SSL pre-trained weights:
-| Architecture |       Dataset      |                           Weights & Tensorboard Logs                           |
-| :---------------:| :---------------: | :----------------------------------------------------------: |
-| SECOND  | KITTI3D  | [google_drive](https://drive.google.com/drive/folders/14Z6mwwRjxRGb00b_YUHd7KWuZwVmZ8pG?usp=sharing) |
-| PV-RCNN  | KITTI3D  | [google_drive](https://drive.google.com/drive/folders/1XWz48Xr-0-8CRaMyIjoXgUALklkdX7Sw?usp=sharing) |
-| SECOND  | ONCE (small, 100k)  | [google_drive](https://drive.google.com/drive/folders/1qMkrCtES-rhzYGOa8gzEsB_gEzpjWqyn?usp=sharing) |
-| SECOND  | ONCE (medium, 500k)  | [google_drive](https://drive.google.com/drive/folders/1JsdgHbgLule9T5G1hts-TiYYBfH6w_S0?usp=sharing) |
-
-
-
-## Installation
-
-This repo is developed by Python 3.8.
-
-Installing pytorch:
-```
-pip install torch==1.10.1+cu111 torchvision==0.11.2+cu111 torchaudio==0.10.1 -f https://download.pytorch.org/whl/cu111/torch_stable.html
-```
-
-Installing other packages
-```
-pip install -r requirements.txt
-```
-
-For other installation requirements:
-Please refer to [INSTALL.md](docs/INSTALL.md) for the installation of [OpenPCDet(v0.5)](https://github.com/open-mmlab/OpenPCDet).
-
-## Setting up dataset
-
-Please refer to [GETTING_STARTED.md](docs/GETTING_STARTED.md) .
-
-Set up KITTI dataset with different label efficiency, e.g, :
-```
-python -m pcdet.datasets.kitti.kitti_dataset_label_efficiency create_kitti_infos_label_efficiency tools/cfgs/dataset_configs/kitti_dataset_20_percent.yaml 
-```
-
-
-## Usage
-
-##### Pre-training
-
-
-```
-Train with multiple GPUs:
-bash ./scripts/dist_pretrain.sh ${NUM_GPUS}  --cfg_file ${CFG} --extra_tag ${EXP_TAG}
-
-Train with a single GPU:
-python3 ssl_pretrain.py  --cfg_file ${CFG} --extra_tag ${EXP_TAG}
-```
-e.g.:
-```
-bash ./scripts/dist_pretrain.sh 4 --cfg_file cfgs/kitti_models/ad_l_jepa_kitti.yaml --extra_tag ${EXP_TAG}
-```
-
-##### Then fine-tuning model
-
-Same as [OpenPCDet](https://github.com/open-mmlab/OpenPCDet), e.g.:
-
-```
-bash ./scripts/dist_train.sh ${NUM_GPUS}  --cfg_file cfgs/kitti_models/second.yaml  --pretrained_model ../output/kitti/voxel_mae/ckpt/check_point_10.pth --extra_tag ${EXP_TAG}$
-```
-
-## Acknowledgement
-
-This repository is based on [OpenPCDet](https://github.com/open-mmlab/OpenPCDet), [Occupancy-MAE](https://github.com/chaytonmin/Occupancy-MAE), [BEV-MAE](https://github.com/VDIGPKU/BEV-MAE), [DINO](https://github.com/facebookresearch/dino)
